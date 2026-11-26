@@ -8,6 +8,9 @@ on:
 jobs:
   android:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: portion-app
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +28,7 @@ jobs:
       - name: Install
         run: npm install
 
-      - name: Build web bundle (bundles fonts for offline)
+      - name: Build web bundle
         run: npm run build
 
       - name: Create Android project
@@ -45,16 +48,3 @@ jobs:
         with:
           name: Portion-Android
           path: Portion-Android.apk
-
-      - name: Upload to Appetize (optional)
-        env:
-          APPETIZE_API_KEY: ${{ secrets.APPETIZE_API_KEY }}
-        if: env.APPETIZE_API_KEY != ''
-        run: |
-          RES=$(curl -sS https://api.appetize.io/v1/apps \
-            -H "X-API-KEY: $APPETIZE_API_KEY" \
-            -F "file=@Portion-Android.apk" \
-            --form-string "platform=android")
-          echo "$RES"
-          KEY=$(echo "$RES" | python3 -c "import sys,json;print(json.load(sys.stdin).get('publicKey',''))")
-          [ -n "$KEY" ] && echo "### Android preview: https://appetize.io/app/$KEY?device=pixel8" >> "$GITHUB_STEP_SUMMARY"
