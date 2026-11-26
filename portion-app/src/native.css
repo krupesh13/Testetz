@@ -1,0 +1,17 @@
+/* Native-app additions. They change no colors, sizes or layout.
+   1. Safe areas: same insets the website already uses, but read from the
+      values Capacitor injects, because some Android WebViews report env() as 0. */
+:root{
+  padding-top:var(--safe-area-inset-top,env(safe-area-inset-top,0px));
+  padding-bottom:var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px));
+}
+@media(max-width:859px){
+  #stage{
+    padding-left:var(--safe-area-inset-left,env(safe-area-inset-left,0px));
+    padding-right:var(--safe-area-inset-right,env(safe-area-inset-right,0px));
+  }
+}
+/* 2. App feel: no "save image" pop-up on long-press, no rubber-band on the page itself
+      (the inner screens still scroll exactly as on the website). */
+img{-webkit-touch-callout:none;-webkit-user-drag:none}
+html,body{overscroll-behavior:none}
