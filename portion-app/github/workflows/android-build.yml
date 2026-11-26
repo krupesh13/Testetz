@@ -1,0 +1,60 @@
+name: Android cloud build & preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install
+        run: npm install
+
+      - name: Build web bundle (bundles fonts for offline)
+        run: npm run build
+
+      - name: Create Android project
+        run: |
+          if [ ! -d android ]; then npx cap add android && node scripts/patch-android.mjs; fi
+          npx @capacitor/assets generate --android --iconBackgroundColor '#5F6130' --splashBackgroundColor '#5F6130' --splashBackgroundColorDark '#5F6130' || echo "icon generation skipped"
+          npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/Portion-Android.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Portion-Android
+          path: Portion-Android.apk
+
+      - name: Upload to Appetize (optional)
+        env:
+          APPETIZE_API_KEY: ${{ secrets.APPETIZE_API_KEY }}
+        if: env.APPETIZE_API_KEY != ''
+        run: |
+          RES=$(curl -sS https://api.appetize.io/v1/apps \
+            -H "X-API-KEY: $APPETIZE_API_KEY" \
+            -F "file=@Portion-Android.apk" \
+            --form-string "platform=android")
+          echo "$RES"
+          KEY=$(echo "$RES" | python3 -c "import sys,json;print(json.load(sys.stdin).get('publicKey',''))")
+          [ -n "$KEY" ] && echo "### Android preview: https://appetize.io/app/$KEY?device=pixel8" >> "$GITHUB_STEP_SUMMARY"
